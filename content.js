@@ -1,22 +1,45 @@
 (() => {
   if (window.__steadyKeysLoaded) return;
   window.__steadyKeysLoaded = true;
-  let hintMode = false, hints = [], typed = "", sequence = "", sequenceTimer, hud;
+  const onYouTube = /(^|\.)youtube\.com$/i.test(location.hostname);
+  let hintMode = false, hints = [], typed = "", sequence = "", sequenceTimer, hud, hudStatus;
+  let numericSequence = "", numericTimer;
   const editable = (el) => el instanceof HTMLElement && (el.isContentEditable || /^(INPUT|TEXTAREA|SELECT)$/.test(el.tagName));
-  function showHud(message) {
-    if (!hud) {
-      hud = document.createElement("div");
-      hud.style.cssText = "position:fixed;z-index:2147483647;right:18px;bottom:18px;padding:9px 13px;background:#111827;color:#fff;border:1px solid #64748b;border-radius:8px;font:13px/1.4 system-ui,sans-serif;box-shadow:0 4px 18px #0005;opacity:1;transition:opacity 350ms ease;pointer-events:none;";
-      hud.setAttribute("aria-live", "polite"); document.documentElement.append(hud);
+
+  function ensureHud() {
+    if (hud) return;
+    hud = document.createElement("div");
+    hud.style.cssText = "position:fixed;z-index:2147483647;right:18px;bottom:18px;padding:0;opacity:1;transition:opacity 350ms ease;pointer-events:none;";
+    if (onYouTube) {
+      const shadow = hud.attachShadow({ mode: "open" });
+      shadow.innerHTML = `<style>
+        aside{min-width:205px;padding:12px 14px;border:1px solid #64748b;border-radius:12px;background:#111827;color:#f9fafb;box-shadow:0 5px 22px #0006;font:13px/1.4 system-ui,sans-serif}
+        header{margin-bottom:8px;color:#facc15;font-size:11px;font-weight:800;letter-spacing:.12em;text-transform:uppercase}
+        .row{display:flex;align-items:center;gap:10px;margin:6px 0}
+        kbd{display:inline-block;min-width:31px;padding:2px 5px;border:1px solid #4b5563;border-radius:5px;background:#1f2937;color:#fff;text-align:center;font:700 12px ui-monospace,monospace}
+        #status{display:block;margin-top:8px;padding-top:7px;border-top:1px solid #374151;color:#9ca3af;font-size:10px}
+      </style><aside aria-label="Constant Shortcuts"><header>Constant Shortcuts</header><div class="row"><kbd>20</kbd><span>Full screen</span></div><div class="row"><kbd>19</kbd><span>Theater mode</span></div><small id="status">Fixed YouTube shortcuts</small></aside>`;
+      hudStatus = shadow.querySelector("#status");
+    } else {
+      hud.style.cssText += "padding:9px 13px;background:#111827;color:#fff;border:1px solid #64748b;border-radius:8px;font:13px/1.4 system-ui,sans-serif;box-shadow:0 4px 18px #0005;";
     }
-    hud.textContent = message; hud.style.display = "block"; hud.style.opacity = "1"; clearTimeout(showHud.timer);
+    document.documentElement.append(hud);
+  }
+
+  function showHud(message) {
+    ensureHud();
+    if (onYouTube) hudStatus.textContent = message;
+    else hud.textContent = message;
+    hud.style.display = "block"; hud.style.opacity = "1"; clearTimeout(showHud.timer);
     showHud.timer = setTimeout(() => { hud.style.opacity = "0.4"; }, 2800);
   }
+
   function clearHints() {
     const wasHinting = hintMode;
     hintMode = false; hints.forEach(({ badge }) => badge.remove()); hints = [];
-    if (wasHinting) showHud("Steady Keys · f links · F new tab");
+    if (wasHinting) showHud(onYouTube ? "Fixed YouTube shortcuts" : "Steady Keys · f links · F new tab");
   }
+
   function startHints(newTab) {
     clearHints();
     const targets = [...document.querySelectorAll("a[href],button,input:not([type=hidden]),select,textarea,[role=button],[onclick],summary")].filter((el) => {
@@ -33,6 +56,7 @@
     });
     showHud(`Link hints · type a number · ${newTab ? "new tab" : "open"} · Esc to cancel`); startHints.newTab = newTab;
   }
+
   function chooseHint() {
     const match = hints.find(({ code }) => code === typed); if (!match) return false;
     const el = match.el, href = el.closest("a[href]")?.href || (el.matches("a[href]") ? el.href : null), newTab = startHints.newTab;
@@ -41,6 +65,31 @@
     else if (href) location.assign(href); else el.click();
     return true;
   }
+
+  function seekToDigit(digit) {
+    const video = document.querySelector("video");
+    if (video && Number.isFinite(video.duration) && video.duration > 0) video.currentTime = video.duration * Number(digit) / 10;
+  }
+
+  function handleYouTubeDigits(event) {
+    if (!onYouTube || !/^[0-9]$/.test(event.key)) return false;
+    const key = event.key;
+    if ((numericSequence === "2" && key === "0") || (numericSequence === "1" && key === "9")) {
+      event.preventDefault(); clearTimeout(numericTimer); numericSequence = "";
+      const action = key === "0" ? ".ytp-fullscreen-button" : ".ytp-size-button";
+      document.querySelector(action)?.click();
+      showHud(key === "0" ? "Full screen · 20" : "Theater mode · 19");
+      return true;
+    }
+    if (numericSequence) { clearTimeout(numericTimer); seekToDigit(numericSequence); numericSequence = ""; }
+    if (key === "1" || key === "2") {
+      event.preventDefault(); numericSequence = key;
+      numericTimer = setTimeout(() => { seekToDigit(numericSequence); numericSequence = ""; }, 700);
+      return true;
+    }
+    return false;
+  }
+
   const pageScroll = (factor) => window.scrollBy({ top: Math.round(innerHeight * factor), behavior: "smooth" });
   function onKeyDown(e) {
     if (e.defaultPrevented || e.altKey || e.ctrlKey || e.metaKey) return;
@@ -50,12 +99,13 @@
         e.preventDefault(); typed += e.key;
         const possible = hints.filter(({ code }) => code.startsWith(typed));
         if (typed.length === hints[0].code.length && possible.length === 1) chooseHint();
-        else if (!possible.length) { typed = ""; showHud("No matching hint · try again or Esc"); hud.style.display = "block"; }
+        else if (!possible.length) { typed = ""; showHud("No matching hint · try again or Esc"); }
         else showHud(`Hint ${typed}… · Esc to cancel`);
       }
       return;
     }
     if (editable(e.target) || e.isComposing) return;
+    if (handleYouTubeDigits(e)) return;
     const k = e.key;
     if (k === "Escape") { sequence = ""; clearTimeout(sequenceTimer); return; }
     if (k === "f" || k === "F") { e.preventDefault(); startHints(k === "F"); return; }
@@ -75,12 +125,14 @@
       if (sequence === "gg") { e.preventDefault(); sequence = ""; window.scrollTo({ top: 0, behavior: "smooth" }); }
     }
   }
+
   window.addEventListener("keydown", onKeyDown, true);
   window.addEventListener("scroll", () => { if (hintMode) clearHints(); }, { passive: true });
-  showHud("Steady Keys · f links · F new tab");
+  if (onYouTube) {
+    document.addEventListener("fullscreenchange", () => {
+      if (hud) (document.fullscreenElement || document.documentElement).append(hud);
+    });
+    showHud("Fixed YouTube shortcuts");
+  } else showHud("Steady Keys · f links · F new tab");
 })();
-
-
-
-
 
