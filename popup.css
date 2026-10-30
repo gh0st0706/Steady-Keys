@@ -1,0 +1,5 @@
+* { box-sizing: border-box; } body { width: 330px; margin: 0; padding: 18px; color: #e5e7eb; background: #111827; font: 13px/1.5 system-ui, sans-serif; }
+header { display: flex; align-items: center; gap: 12px; padding-bottom: 14px; border-bottom: 1px solid #374151; }.mark { display:grid; width:40px;height:40px;place-items:center;border-radius:12px;color:#111827;background:#facc15;font-weight:800; }
+h1 { margin:0;font-size:17px; } header p { margin:1px 0 0;color:#9ca3af; } section { padding-top:13px; } h2 { margin:0 0 8px;color:#facc15;font-size:11px;letter-spacing:.08em;text-transform:uppercase; }
+section p { display:flex;align-items:center;gap:9px;margin:6px 0; } section p span { color:#d1d5db; } kbd { min-width:31px;padding:2px 5px;border:1px solid #4b5563;border-radius:5px;color:#fff;background:#1f2937;text-align:center;font:600 11px ui-monospace,monospace;white-space:nowrap; }
+.note { margin-top:10px;color:#9ca3af;font-size:11px; } footer { margin-top:13px;padding-top:11px;border-top:1px solid #374151;color:#9ca3af;font-size:11px; }
