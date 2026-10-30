@@ -6,13 +6,17 @@
   function showHud(message) {
     if (!hud) {
       hud = document.createElement("div");
-      hud.style.cssText = "position:fixed;z-index:2147483647;right:18px;bottom:18px;padding:9px 13px;background:#111827;color:#fff;border:1px solid #64748b;border-radius:8px;font:13px/1.4 system-ui,sans-serif;box-shadow:0 4px 18px #0005;";
+      hud.style.cssText = "position:fixed;z-index:2147483647;right:18px;bottom:18px;padding:9px 13px;background:#111827;color:#fff;border:1px solid #64748b;border-radius:8px;font:13px/1.4 system-ui,sans-serif;box-shadow:0 4px 18px #0005;opacity:1;transition:opacity 350ms ease;pointer-events:none;";
       hud.setAttribute("aria-live", "polite"); document.documentElement.append(hud);
     }
-    hud.textContent = message; hud.style.display = "block"; clearTimeout(showHud.timer);
-    showHud.timer = setTimeout(() => { if (!hintMode) hud.style.display = "none"; }, 1600);
+    hud.textContent = message; hud.style.display = "block"; hud.style.opacity = "1"; clearTimeout(showHud.timer);
+    showHud.timer = setTimeout(() => { hud.style.opacity = "0.4"; }, 2800);
   }
-  function clearHints() { hintMode = false; hints.forEach(({ badge }) => badge.remove()); hints = []; if (hud) hud.style.display = "none"; }
+  function clearHints() {
+    const wasHinting = hintMode;
+    hintMode = false; hints.forEach(({ badge }) => badge.remove()); hints = [];
+    if (wasHinting) showHud("Steady Keys · f links · F new tab");
+  }
   function startHints(newTab) {
     clearHints();
     const targets = [...document.querySelectorAll("a[href],button,input:not([type=hidden]),select,textarea,[role=button],[onclick],summary")].filter((el) => {
@@ -73,5 +77,10 @@
   }
   window.addEventListener("keydown", onKeyDown, true);
   window.addEventListener("scroll", () => { if (hintMode) clearHints(); }, { passive: true });
+  showHud("Steady Keys · f links · F new tab");
 })();
+
+
+
+
 
